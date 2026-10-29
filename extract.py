@@ -1,12 +1,10 @@
 from PIL import Image
 import numpy as np
-import json
 import os
-from datetime import date
 import matplotlib.pyplot as plt
 
 def f(t):
-    #funtion for converting xyz to lab
+    """Helper-XYZ to LAB."""
     Del  = 6/29
 
     mask = t > Del**3
@@ -16,7 +14,7 @@ def f(t):
     return t
 
 def f_inv(t):
-    #funtion for converting xyz to lab
+    """Inverse Function for LAB to XYZ."""
     Del  = 6/29
 
     mask = t > Del
@@ -27,12 +25,12 @@ def f_inv(t):
 
 
 def rgb_to_lab(pixels_rgb):
-    # Convertig uint8 RGB to CIELAB
+    """Takes in (N,3) RGB pixel array and outputs LAB array."""
 
     # Normalise to [0,1]
     rgb = pixels_rgb.astype(np.float32) / 255.0
 
-    # srgb is non-linera
+    # srgb is non-linear
     mask = rgb > 0.04045 # below this value it needs to be a scaled by 12.92
     rgb[mask]  = ((rgb[mask]  + 0.055) / 1.055) ** 2.4
     rgb[~mask] /= 12.92
@@ -46,7 +44,6 @@ def rgb_to_lab(pixels_rgb):
     xyzT = np.dot(M, rgb.T)
     xyz = xyzT.T
 
-    # xyz to lab, from wiki
     # Using D65 whitepoint
     Xn = 0.950489
     Yn = 1
@@ -60,7 +57,7 @@ def rgb_to_lab(pixels_rgb):
 
 
 def lab_to_rgb(lab):
-
+    """Takes in LAB pixels and outputs in RGB.   """
     L, a, b = lab[:, 0], lab[:, 1], lab[:, 2]
     Xn = 0.950489
     Yn = 1
@@ -118,10 +115,8 @@ def kmeans(pixels_lab, k, max_iter = 20):
     return centers
 
 
-# A problem i am currently running into is that the distinct colors maybe too similar
-
 def enforce_min_delta_e( centers_lab, pixels_lab, min_de= 25.0,):
-    """Only keep colors that are '15' apart in LAB, choose the next unused cluster center    """
+    """Only keep colors that are 25 apart in LAB, choose the next unused cluster center    """
     kept = [centers_lab[0]]
     for c in centers_lab[1:]:
         dists_to_kept = [np.linalg.norm(c - k) for k in kept]
@@ -173,6 +168,9 @@ def extract_colors(img, k = 7, min_de = 25.0):
 
 
 def run_check(centers_lab, distinct_lab, number_of_colors, pixels_lab, min_de_value):
+    """If min_de is too high and an image is too uniform, num of colors maybe too low.
+        This function reduces min_de until requested number of colors are found.
+    """
     while len(distinct_lab) < number_of_colors:
         min_de_value-=3
         distinct_lab = enforce_min_delta_e(centers_lab, pixels_lab=pixels_lab, min_de=min_de_value)
@@ -183,7 +181,7 @@ def run_check(centers_lab, distinct_lab, number_of_colors, pixels_lab, min_de_va
 
 ########################## PUBLIC FUNCTIONS ##########################
 
-def line_colors( image_path, number_of_colors= 7, min_de= 25.0, save= True, preview = True):
+def line_colors( image_path, number_of_colors= 7, min_de= 25.0, save= True, preview = False):
     """Extract a categorical palette and optionally preview it."""
     with Image.open(image_path) as im:
         colors = extract_colors(im, k=number_of_colors, min_de=min_de)
@@ -202,7 +200,7 @@ def line_colors( image_path, number_of_colors= 7, min_de= 25.0, save= True, prev
     return colors
 
 
-def sequential_colors( image_path, save = True, preview= True ):
+def sequential_colors( image_path, save = True, preview= False ):
     """Build a smooth LinearSegmentedColormap from the image's tonal range."""
     from matplotlib.colors import LinearSegmentedColormap
 
